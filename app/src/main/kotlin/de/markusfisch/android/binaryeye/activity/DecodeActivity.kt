@@ -9,7 +9,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.DocumentsContract
-import androidx.core.net.toUri
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import android.text.Editable
 import android.text.Html
@@ -30,17 +29,8 @@ import android.widget.TableRow
 import android.widget.TextView
 import de.markusfisch.android.binaryeye.R
 import de.markusfisch.android.binaryeye.actions.ActionRegistry
-import de.markusfisch.android.binaryeye.actions.mail.MatMsg
-import de.markusfisch.android.binaryeye.actions.mail.MatMsgAction
-import de.markusfisch.android.binaryeye.actions.vtype.VTypeParser
-import de.markusfisch.android.binaryeye.actions.vtype.vcard.VCardAction
-import de.markusfisch.android.binaryeye.actions.vtype.vevent.VEventAction
-import de.markusfisch.android.binaryeye.actions.web.WebAction
-import de.markusfisch.android.binaryeye.actions.wifi.WifiAction
-import de.markusfisch.android.binaryeye.actions.wifi.WifiConnector
 import de.markusfisch.android.binaryeye.adapter.prettifyFormatName
 import de.markusfisch.android.binaryeye.app.db
-import de.markusfisch.android.binaryeye.app.hasLocationPermission
 import de.markusfisch.android.binaryeye.app.hasWritePermission
 import de.markusfisch.android.binaryeye.app.prefs
 import de.markusfisch.android.binaryeye.content.ContentBarcode
@@ -338,58 +328,7 @@ class DecodeActivity : ScreenActivity() {
 				}
 			)
 		}
-		when (action) {
-			is MatMsgAction -> items.putAll(
-				MatMsg(text).run {
-					mapOf(
-						R.string.email_to to to,
-						R.string.email_subject to sub,
-						R.string.email_body to body
-					)
-				}
-			)
 
-			is VCardAction,
-			is VEventAction -> VTypeParser.parseMap(text).let { vData ->
-				items.putAll(
-					vData.map { item ->
-						item.key to item.value.joinToString("\n") {
-							it.value
-						}
-					}.toMap()
-				)
-			}
-
-				is WebAction -> try {
-					items.putAll(
-						text.toUri().run {
-							mapOf(
-								R.string.scheme to scheme,
-								R.string.host to host,
-							R.string.query to query
-						)
-					}
-				)
-			} catch (_: Exception) {
-				// Ignore
-			}
-
-			is WifiAction -> WifiConnector.parseMap(text)?.let { wifiData ->
-				items.putAll(
-					linkedMapOf(
-						R.string.entry_type to getString(R.string.wifi_network),
-						R.string.wifi_ssid to wifiData["S"],
-						R.string.wifi_password to wifiData["P"],
-						R.string.wifi_type to wifiData["T"],
-						R.string.wifi_hidden to wifiData["H"],
-						R.string.wifi_eap to wifiData["E"],
-						R.string.wifi_identity to wifiData["I"],
-						R.string.wifi_anonymous_identity to wifiData["A"],
-						R.string.wifi_phase2 to wifiData["PH2"]
-					)
-				)
-			}
-		}
 		fill(items)
 	}
 
@@ -470,15 +409,11 @@ class DecodeActivity : ScreenActivity() {
 		if (scan.id > 0L) {
 			menu.findItem(R.id.remove).isVisible = true
 		}
-		if (action is WifiAction) {
-			menu.findItem(R.id.copy_password).isVisible = true
-		}
 	}
 
 	override fun onOptionsItemSelected(item: MenuItem): Boolean {
 		return when (item.itemId) {
 			R.id.copy_password -> {
-				copyPasswordToClipboard()
 				maybeBackOrFinish()
 				true
 			}
@@ -555,15 +490,6 @@ class DecodeActivity : ScreenActivity() {
 		content = textOrHex(),
 	)
 
-	private fun copyPasswordToClipboard() {
-		val ac = action
-		if (ac is WifiAction) {
-			ac.password?.let { password ->
-				copyToClipboard(password, isSensitive = true)
-			}
-		}
-	}
-
 	private fun copyToClipboard(text: String, isSensitive: Boolean = false) {
 		(this as android.content.Context).copyToClipboard(text, isSensitive)
 		// There's a clipboard popup from Android 13 on.
@@ -584,12 +510,6 @@ class DecodeActivity : ScreenActivity() {
 
 	private fun executeAction(str: String) {
 		if (str.isEmpty() || openLocalDocument(str)) {
-			return
-		}
-		if (action is WifiAction &&
-			Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
-			!hasLocationPermission { executeAction(str) }
-		) {
 			return
 		}
 		scope.launch {
