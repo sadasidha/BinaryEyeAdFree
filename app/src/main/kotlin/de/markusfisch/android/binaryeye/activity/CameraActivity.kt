@@ -31,7 +31,6 @@ import de.markusfisch.android.binaryeye.app.hasBluetoothPermission
 import de.markusfisch.android.binaryeye.app.hasCameraPermission
 import de.markusfisch.android.binaryeye.app.prefs
 import de.markusfisch.android.binaryeye.automation.runAutomatedActions
-import de.markusfisch.android.binaryeye.bluetooth.sendBluetoothAsync
 import de.markusfisch.android.binaryeye.content.copyToClipboard
 import de.markusfisch.android.binaryeye.content.execShareIntent
 import de.markusfisch.android.binaryeye.content.openUrl
@@ -887,30 +886,7 @@ fun Activity.showResult(
 			}
 		}
 	}
-	if (prefs.sendScanBluetooth &&
-		prefs.sendScanBluetoothHost.isNotEmpty() &&
-		hasBluetoothPermission()
-	) {
-		scan.sendBluetoothAsync(
-			prefs.sendScanBluetoothHost
-		) { connected, sent ->
-			toast(
-				when {
-					!connected -> {
-						errorFeedback()
-						R.string.bluetooth_connect_fail
-					}
 
-					!sent -> {
-						errorFeedback()
-						R.string.bluetooth_send_fail
-					}
-
-					else -> R.string.bluetooth_send_success
-				}
-			)
-		}
-	}
 	if (runAutomatedActions(scan)) {
 		return
 	}

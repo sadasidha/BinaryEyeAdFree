@@ -9,7 +9,6 @@ import de.markusfisch.android.binaryeye.actions.tel.TelAction
 import de.markusfisch.android.binaryeye.actions.vtype.vcard.VCardAction
 import de.markusfisch.android.binaryeye.actions.vtype.vevent.VEventAction
 import de.markusfisch.android.binaryeye.actions.web.WebAction
-import de.markusfisch.android.binaryeye.actions.wifi.WifiAction
 
 object ActionRegistry {
 	val DEFAULT_ACTION: Action = OpenOrSearchAction
@@ -22,9 +21,6 @@ object ActionRegistry {
 		TelAction,
 		VCardAction,
 		VEventAction,
-		WifiAction,
-		// Try WebAction last because recognizing colloquial URLs is
-		// very aggressive.
 		WebAction
 	)
 

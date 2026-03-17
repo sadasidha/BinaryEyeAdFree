@@ -1,15 +1,11 @@
 package de.markusfisch.android.binaryeye.fragment
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener
-import android.net.wifi.WifiManager
-import android.os.Build
 import android.os.Bundle
-import androidx.annotation.RequiresApi
 import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.Preference
@@ -17,17 +13,14 @@ import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceGroup
 import de.markusfisch.android.binaryeye.R
 import de.markusfisch.android.binaryeye.activity.AutomatedActionsActivity
-import de.markusfisch.android.binaryeye.activity.NetworkSuggestionsActivity
 import de.markusfisch.android.binaryeye.activity.ProfilesActivity
 import de.markusfisch.android.binaryeye.activity.SplashActivity
 import de.markusfisch.android.binaryeye.app.hasBluetoothPermission
 import de.markusfisch.android.binaryeye.app.prefs
-import de.markusfisch.android.binaryeye.bluetooth.setBluetoothHosts
 import de.markusfisch.android.binaryeye.media.beepConfirm
 import de.markusfisch.android.binaryeye.preference.UrlPreference
 import de.markusfisch.android.binaryeye.view.setPaddingFromWindowInsets
 import de.markusfisch.android.binaryeye.view.systemBarRecyclerViewScrollListener
-import de.markusfisch.android.binaryeye.widget.toast
 
 class PreferencesFragment : PreferenceFragmentCompat() {
 	private var lastProfile: String? = null
@@ -83,8 +76,6 @@ class PreferencesFragment : PreferenceFragmentCompat() {
 
 		wireProfiles()
 		wireAutomatedActions()
-		setBluetoothResources()
-		wireClearNetworkPreferences()
 	}
 
 	private fun wireProfiles() {
@@ -107,67 +98,6 @@ class PreferencesFragment : PreferenceFragmentCompat() {
 				true
 			}
 		}
-	}
-
-	private fun setBluetoothResources() {
-		if (prefs.sendScanBluetooth &&
-			activity?.hasBluetoothPermission() == true
-		) {
-			findPreference<ListPreference>("send_scan_bluetooth_host")?.let {
-				setBluetoothHosts(it)
-			}
-		}
-	}
-
-	private fun wireClearNetworkPreferences() {
-		findPreference<Preference>("clear_network_suggestions")?.apply {
-			if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
-				// From R+ we can query past network suggestions and
-				// make them editable.
-				setOnPreferenceClickListener {
-					startActivity(
-						Intent(activity, NetworkSuggestionsActivity::class.java)
-					)
-					true
-				}
-			} else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
-				// On Q, we can only clear *all* suggestions.
-				// Note that previous versions of this app allowed
-				// adding network suggestions on Q as well, so we
-				// need to keep this option.
-					setOnPreferenceClickListener {
-						context?.askToClearNetworkSuggestions()
-						true
-					}
-			} else {
-				// There are no network suggestions below Q.
-				isVisible = false
-			}
-		}
-	}
-
-	@RequiresApi(Build.VERSION_CODES.Q)
-	private fun Context.askToClearNetworkSuggestions() {
-		AlertDialog.Builder(this)
-			.setMessage(R.string.really_remove_all_networks)
-			.setPositiveButton(android.R.string.ok) { _, _ ->
-				clearNetworkSuggestions()
-			}
-			.setNegativeButton(android.R.string.cancel) { _, _ -> }
-			.show()
-	}
-
-	@RequiresApi(Build.VERSION_CODES.Q)
-	private fun Context.clearNetworkSuggestions() {
-		toast(
-			if (removeAllNetworkSuggestions() ==
-				WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS
-			) {
-				R.string.clear_network_suggestions_success
-			} else {
-				R.string.clear_network_suggestions_nothing_to_remove
-			}
-		)
 	}
 
 	override fun onResume() {
@@ -202,9 +132,6 @@ class PreferencesFragment : PreferenceFragmentCompat() {
 			}
 		} else if (preference.key == "send_scan_bluetooth_host") {
 			val ac = activity ?: return
-			if (ac.hasBluetoothPermission()) {
-				setBluetoothHosts(preference as ListPreference)
-			}
 			super.onDisplayPreferenceDialog(preference)
 		} else {
 			super.onDisplayPreferenceDialog(preference)
@@ -279,9 +206,3 @@ private fun Activity.restartApp() {
 	// Restart to begin with an unmodified Locale to follow system settings.
 	Runtime.getRuntime().exit(0)
 }
-
-@RequiresApi(Build.VERSION_CODES.Q)
-private fun Context.removeAllNetworkSuggestions(): Int =
-	(applicationContext.getSystemService(
-		Context.WIFI_SERVICE
-	) as WifiManager).removeNetworkSuggestions(listOf())
